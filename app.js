@@ -140,10 +140,10 @@ function syncArchiveFromDraft() {
 }
 
 // ---------- Índice de búsqueda ----------
-let activeItems = ITEMS;
-let activeClients = (typeof CLIENTES !== 'undefined' ? CLIENTES : []);
+let activeItems = (typeof ITEMS !== 'undefined' && Array.isArray(ITEMS)) ? ITEMS : [];
+let activeClients = (typeof CLIENTES !== 'undefined' && Array.isArray(CLIENTES)) ? CLIENTES : [];
 const byCode = new Map();
-activeItems.forEach((it) => byCode.set(it.c, it));
+activeItems.forEach((it) => { if (it && it.c != null) byCode.set(String(it.c), it); });
 
 // ---------- Inventario importado desde Lotus ----------
 const STOCK_LOW_LIMIT = 10;
@@ -233,16 +233,16 @@ function fmtMoney(n) {
 }
 
 function search(query) {
-  const q = query.trim().toLowerCase();
-  if (!q) return [];
+  const q = String(query == null ? '' : query).trim().toLocaleLowerCase('es');
+  if (!q || !Array.isArray(activeItems)) return [];
   const results = [];
   for (let i = 0; i < activeItems.length; i++) {
     const it = activeItems[i];
-    if (
-      it.c.toLowerCase().includes(q) ||
-      (it.b && it.b.toLowerCase().includes(q)) ||
-      it.d.toLowerCase().includes(q)
-    ) {
+    if (!it || typeof it !== 'object') continue;
+    const code = String(it.c == null ? '' : it.c).toLocaleLowerCase('es');
+    const brand = String(it.b == null ? '' : it.b).toLocaleLowerCase('es');
+    const description = String(it.d == null ? '' : it.d).toLocaleLowerCase('es');
+    if (code.includes(q) || brand.includes(q) || description.includes(q)) {
       results.push(it);
       if (results.length >= 40) break;
     }
@@ -252,15 +252,18 @@ function search(query) {
 
 // ---------- Índice de clientes ----------
 const clienteByCodigo = new Map();
-activeClients.forEach((cl) => clienteByCodigo.set(cl.c, cl));
+activeClients.forEach((cl) => { if (cl && cl.c != null) clienteByCodigo.set(String(cl.c), cl); });
 
 function searchClientes(query) {
-  const q = query.trim().toLowerCase();
-  if (!q) return [];
+  const q = String(query == null ? '' : query).trim().toLocaleLowerCase('es');
+  if (!q || !Array.isArray(activeClients)) return [];
   const results = [];
   for (let i = 0; i < activeClients.length; i++) {
     const cl = activeClients[i];
-    if (cl.c.toLowerCase().includes(q) || cl.n.toLowerCase().includes(q)) {
+    if (!cl || typeof cl !== 'object') continue;
+    const code = String(cl.c == null ? '' : cl.c).toLocaleLowerCase('es');
+    const name = String(cl.n == null ? '' : cl.n).toLocaleLowerCase('es');
+    if (code.includes(q) || name.includes(q)) {
       results.push(cl);
       if (results.length >= 15) break;
     }
@@ -1449,9 +1452,9 @@ function generatePdfBytes(orderState) {
 
   function drawMiniHeader() {
     const emitter = String(window.KOEJU_EMITTER_EMAIL || '').trim();
-    addText(marginLeft, 824, 6.5, false, 'KO'EJU DEMO');
+    addText(marginLeft, 824, 6.5, false, 'AB SYSTEM');
     addText(marginLeft, 814, 6.5, false, 'Emitido por ' + (emitter || ''));
-    addRight(marginRight, 824, 6.5, false, "Demostración Ko'eju Rory");
+    addRight(marginRight, 824, 6.5, false, "Pedido Ko'eju Rory S. A");
   }
   function addRule(x1, yy, x2) {
     graphics.push({ x1, y1: yy, x2, y2: yy });
@@ -1827,7 +1830,7 @@ if ('serviceWorker' in navigator) {
 }
 
 
-// Punto de extensión para actualizar el catálogo de demostración en memoria.
+// Permite aplicar catálogos compartidos descargados desde Supabase sin recargar la página.
 window.KOEJU_SET_MASTER_DATA = function(items, clients) {
   if (Array.isArray(items) && items.length) {
     activeItems = items;
